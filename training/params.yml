@@ -1,6 +1,7 @@
 # data
 dataset: "data_mine"
 # dataset: "data"
+# dataset: "udacity_simulator"
 train_split: 0.85
 n_buckets: 11
 crop_up: 50

@@ -48,18 +48,29 @@ def main(
         df_test = pd.read_feather(test_cache_path)
 
     else:
-        # df = dataget.image.udacity_simulator().get()
-        header = ["center", "left", "right", "steering", "throttle", "break", "speed"]
-        df = pd.read_csv(
-            os.path.join(params["dataset"], "driving_log.csv"), names=header
-        )
-
-        df_train, df_test = estimator.split(df, params)
-
-        df_train = estimator.preprocess(df_train, params, "train", params["dataset"])
-        df_test = estimator.preprocess(df_test, params, "test", params["dataset"])
-        # df_train = estimator.preprocess(df_train, params, "train")
-        # df_test = estimator.preprocess(df_test, params, "test")
+        if params["dataset"] == "udacity_simulator":
+            df = dataget.image.udacity_simulator().get()
+            df_train, df_test = estimator.split(df, params)
+            df_train = estimator.preprocess(df_train, params, "train")
+            df_test = estimator.preprocess(df_test, params, "test")
+        else:
+            header = [
+                "center",
+                "left",
+                "right",
+                "steering",
+                "throttle",
+                "break",
+                "speed",
+            ]
+            df = pd.read_csv(
+                os.path.join(params["dataset"], "driving_log.csv"), names=header
+            )
+            df_train, df_test = estimator.split(df, params)
+            df_train = estimator.preprocess(
+                df_train, params, "train", params["dataset"]
+            )
+            df_test = estimator.preprocess(df_test, params, "test", params["dataset"])
 
         # cache data
         df_train = df_train.reset_index(drop=True)
