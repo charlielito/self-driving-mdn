@@ -122,7 +122,7 @@ def get_steering(preds):
     alpha, mu, sigma = slice_parameter_vectors(preds.numpy(), components)
     # print(alpha)
     max_prob = np.max(alpha, axis=-1)
-    if max_prob > 0.5:
+    if max_prob > 0.9995:
         index = np.argmax(alpha, axis=-1)
         angle = mu[:, index[0]]
     else:

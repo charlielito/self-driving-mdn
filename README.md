@@ -11,7 +11,7 @@ For diving deep on MDN, these are really helpful resources:
 ## Early results
 A CNN was trained using 8 components. At inference time, the weighted mean of all distributions were computed as the final steering angle. Also we plot the angle joint distribution at each frame for the whole range o steering ([-1,1]) to see how the distributions "fight" for driving. 
 
-Video here: https://
+![ezgif com-optimize](https://user-images.githubusercontent.com/8033598/90179195-b4598f80-dd72-11ea-9384-80f443f9ee66.gif)
 
 We can see that there are 3 main components. One for straight driving on 2 por going left and right. It is interesting that when going straight, there still some probability for going to either left or right.
 
