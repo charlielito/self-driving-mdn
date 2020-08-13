@@ -1,21 +1,26 @@
 import argparse
 import base64
-from datetime import datetime
-from io import BytesIO
-import os
+import io
 import os
 import shutil
+import time
+from datetime import datetime
+from io import BytesIO
 
-from PIL import Image
 import cv2
 import dicto
 import eventlet
 import eventlet.wsgi
-from flask import Flask
+
 import numpy as np
 import socketio
 import tensorflow as tf
 import typer
+from flask import Flask
+from PIL import Image
+from tensorflow_probability import distributions as tfd
+
+from training.experiment import slice_parameter_vectors
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
@@ -48,11 +53,13 @@ model = None
 
 controller = SimplePIController(0.1, 0.002)
 
-params = dicto.load("training/params.yml")
+params = None
+components = None
 
 
 @sio.on("telemetry")
 def telemetry(sid, data):
+    global logs
     if data:
         # The current steering angle of the car
         steering_angle = data["steering_angle"]
@@ -67,15 +74,21 @@ def telemetry(sid, data):
 
         image_array = image_array[params.crop_up : -params.crop_down, :, :]
         image_array = cv2.resize(image_array, tuple(params.image_size[::-1]))
-        image_array = (
-            cv2.cvtColor(image_array, cv2.COLOR_RGB2YUV).astype(np.float32) / 255.0
-        )
+        # image_array = (
+        #     cv2.cvtColor(image_array, cv2.COLOR_RGB2YUV).astype(np.float32) / 255.0
+        # )
+        image_array = image_array.astype(np.float32) / 255.0
 
-        cv2.imshow("Visualizer", (255 * image_array[..., ::-1]).astype(np.uint8))
-        cv2.waitKey(1)
+        show_image = (255 * image_array[..., ::-1]).astype(np.uint8)
 
         preds = model(image=tf.constant(image_array[None, :, :, :]))
-        steering_angle = float(preds["steering"].numpy()[0])
+
+        if components is not None:
+            steering_angle = get_steering(preds["pvec"])
+        else:
+            steering_angle = float(preds["steering"].numpy()[0])
+        cv2.imshow("Visualizer", show_image)
+        cv2.waitKey(1)
 
         throttle = controller.update(float(speed))
 
@@ -104,25 +117,56 @@ def send_control(steering_angle, throttle):
     )
 
 
+def get_steering(preds):
+
+    alpha, mu, sigma = slice_parameter_vectors(preds.numpy(), components)
+    # print(alpha)
+    max_prob = np.max(alpha, axis=-1)
+    if max_prob > 0.5:
+        index = np.argmax(alpha, axis=-1)
+        angle = mu[:, index[0]]
+    else:
+        angle = np.multiply(alpha, mu).sum(axis=-1)
+    # print(angle)
+
+    gm = tfd.MixtureSameFamily(
+        mixture_distribution=tfd.Categorical(probs=alpha),
+        components_distribution=tfd.Normal(loc=mu, scale=sigma),
+    )
+    x = np.linspace(-1, 1, int(1e3))
+    pyx = gm.prob(x)
+
+    plot = cv2.plot.Plot2d_create(
+        np.array(x).astype(np.float64), np.array(pyx).astype(np.float64)
+    )
+    plot.setPlotBackgroundColor((255, 255, 255))
+    plot.setInvertOrientation(True)
+    plot.setPlotLineColor(0)
+    plot = plot.render()
+
+    cv2.imshow("Distribution", plot)
+
+    return angle[0]
+
+
 def main(model_path: str, speed: float = 22):
     global app
     global model
+    global params
+    global components
+
+    params = dicto.load(os.path.join(model_path, "params.yml"))
+    components = params["components"]
 
     model_obj = tf.saved_model.load(model_path)
     model = model_obj.signatures["serving_default"]
-
-    # print(model.structured_input_signature)
-    # print(model.structured_outputs)
-    # preds = model(image=tf.constant(np.random.randint(0,255,size=(1,32,32,3)).astype(np.float32)))
-    # print(preds)
-    # exit()
 
     controller.set_desired(speed)
 
     # wrap Flask application with engineio's middleware
     app = socketio.Middleware(sio, app)
 
-    # deploy as an eventlet WSGI server
+    # depcloy as an eventlet WSGI server
     eventlet.wsgi.server(eventlet.listen(("", 4567)), app)
 
 
