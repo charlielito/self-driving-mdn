@@ -9,7 +9,7 @@ For diving deep on MDN, these are really helpful resources:
 * [Original paper](https://publications.aston.ac.uk/id/eprint/373/1/NCRG_94_004.pdf?fbclid=IwAR2YPovNlXP0SlJ49KenayPhKojQXv7eC9DEzJLCIi6XiBATnH7G3CFb02g)
 
 ## Early results
-A CNN was trained using 8 components. At inference time, the weighted mean of all distributions were computed as the final steering angle. Also we plot the angle joint distribution at each frame for the whole range o steering ([-1,1]) to see how the distributions "fight" for driving. 
+A CNN was trained using 8 components. At inference time, the weighted mean of all distributions were computed as the final steering angle. Also we plot the angle joint distribution at each frame for the whole range o steering ([-1,1]) to see how the distributions "fight" for driving. The central red line indicates no steering or `steering angle=0`.
 
 ![ezgif com-optimize](https://user-images.githubusercontent.com/8033598/90179195-b4598f80-dd72-11ea-9384-80f443f9ee66.gif)
 
